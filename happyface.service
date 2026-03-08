@@ -1,0 +1,17 @@
+[Unit]
+Description=Happy Face App (Express + SQLite)
+After=network.target
+
+[Service]
+Type=simple
+User=svei
+WorkingDirectory=/home/svei/happyface-project/happyface
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=5
+Environment=NODE_ENV=production
+Environment=PORT=3456
+Environment=DB_PATH=/home/svei/happyface-project/happyface/happyface.db
+
+[Install]
+WantedBy=multi-user.target

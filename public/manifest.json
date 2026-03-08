@@ -1,0 +1,13 @@
+{
+  "name": "Happy Face",
+  "short_name": "HappyFace",
+  "description": "Reward chart for kids",
+  "theme_color": "#FFF9F0",
+  "background_color": "#FFF9F0",
+  "display": "standalone",
+  "orientation": "portrait",
+  "start_url": "/",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
