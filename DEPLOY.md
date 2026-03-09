@@ -270,3 +270,27 @@ sudo systemctl start happyface
 **Service fails to start after update**
 → `sudo nano /etc/systemd/system/happyface.service` — verify the WorkingDirectory path is correct
 → After editing: `sudo systemctl daemon-reload && sudo systemctl restart happyface`
+
+---
+
+## 📋 Node.js Version Requirement
+
+Happy Face uses the **built-in SQLite module** (`node:sqlite`) introduced in Node v22.5. Your server runs Node v25.8.0 — this is fine.
+
+If you ever reinstall Node and end up on a version older than v22.5, the server will crash with `Cannot find module 'node:sqlite'`. Fix: upgrade Node via `dietpi-software install 9`.
+
+Check your version anytime:
+```bash
+node --version   # must be v22.5.0 or higher
+```
+
+## 🗄️ Database File
+
+`happyface.db` is created automatically when the server starts for the first time. You do not need to create it manually. If it already exists (from a previous version), it is left completely untouched.
+
+The file lives at:
+```
+/home/svei/happyface-project/happyface/happyface.db
+```
+
+It is excluded from `.gitignore` so it is never overwritten by a `git pull` or deploy.

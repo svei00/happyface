@@ -113,3 +113,14 @@ Photos are stored as base64 text inside SQLite. When your wife uploads a photo o
 - 😈 Smiling Devil → **👿 Angry Devil** (no smile)
 - 🙄 Eye Roll → **😭 Crying**
 - 💢 Rage → **👺 Ogre**
+
+---
+
+## v3.2 — 2026-03
+
+### Bug Fix — Installation
+- **Replaced `better-sqlite3` with Node.js built-in SQLite (`node:sqlite`)** — `better-sqlite3` is a native C++ addon that requires `make`, `gcc`, and build tools to compile from source. DietPi does not have these installed by default, causing `npm install` to fail with a `gyp ERR! not found: make` error. Node v22.5+ (user has v25.8.0) ships with SQLite built-in via `require('node:sqlite')`. Zero compilation, zero new dependencies, same behaviour.
+- `better-sqlite3` removed from `package.json` entirely — `npm install` now only installs `express`, `react`, `react-dom`, and Vite dev tools, all of which are pure JavaScript and install instantly
+
+### Database auto-creation
+- `happyface.db` is created automatically on first server start if it does not exist. No manual step needed. If the file already exists, it is left untouched.

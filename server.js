@@ -1,11 +1,11 @@
 // ═══════════════════════════════════════════════════════════
-// Happy Face — Backend Server
-// Express serves the React app + a simple JSON API backed by SQLite
-// All devices on the network share the same data
+// Happy Face — Backend Server v3.2
+// Uses Node.js built-in SQLite (node:sqlite) — requires Node v22.5+
+// No npm packages needed for the database. Zero compilation.
 // ═══════════════════════════════════════════════════════════
 
 const express = require('express');
-const Database = require('better-sqlite3');
+const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 const fs = require('fs');
 
@@ -13,7 +13,8 @@ const PORT = process.env.PORT || 3456;
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'happyface.db');
 
 // ── Database setup ───────────────────────────────────────────
-const db = new Database(DB_PATH);
+// DatabaseSync creates the file automatically if it does not exist.
+const db = new DatabaseSync(DB_PATH);
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS app_data (
@@ -22,25 +23,26 @@ db.exec(`
   )
 `);
 
-// Default data if database is empty
 const DEFAULT_DATA = {
   settings: {
     pin: '1234',
     badFaceBehavior: 'separate',
     gridRows: 10,
     gridCols: 7,
-    seasonalMode: 'auto'
+    seasonalMode: 'auto',
+    prizeOpacity: 0.08,
+    biometricCredentialId: null,
   },
   currentDraw: {
     id: 1,
     startDate: new Date().toISOString().split('T')[0],
-    winner: null
+    winner: null,
   },
   kids: [
-    { id: 'k1', name: 'Kid 1', photo: null, prizePhoto: null, prizeName: '🎁 Special Prize!', goodFaces: [], badFaces: [], paletteIdx: 0 },
-    { id: 'k2', name: 'Kid 2', photo: null, prizePhoto: null, prizeName: '🎁 Special Prize!', goodFaces: [], badFaces: [], paletteIdx: 1 }
+    { id: 'k1', name: 'Eileencita', photo: null, prizePhoto: null, prizeName: 'Special Prize!', prizeBrandLogo: null, goodFaces: [], badFaces: [], paletteIdx: 1 },
+    { id: 'k2', name: 'Andy',       photo: null, prizePhoto: null, prizeName: 'Special Prize!', prizeBrandLogo: null, goodFaces: [], badFaces: [], paletteIdx: 9 },
   ],
-  drawHistory: []
+  drawHistory: [],
 };
 
 function getData() {
@@ -62,59 +64,36 @@ function setData(data) {
 
 // ── Express app ──────────────────────────────────────────────
 const app = express();
-
-// Parse large JSON (photos are base64 encoded images — can be big)
 app.use(express.json({ limit: '50mb' }));
 
-// Serve built React app
 const distPath = path.join(__dirname, 'dist');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
 } else {
-  console.warn('⚠️  dist/ folder not found. Run "npm run build" first.');
+  console.warn('⚠️  dist/ not found — run: npm run build');
 }
 
-// ── API routes ───────────────────────────────────────────────
-
-// GET /api/data — load all app state
 app.get('/api/data', (req, res) => {
-  try {
-    res.json(getData());
-  } catch (err) {
-    console.error('GET /api/data error:', err);
-    res.status(500).json({ error: 'Failed to load data' });
-  }
+  try { res.json(getData()); }
+  catch (err) { console.error(err); res.status(500).json({ error: 'Load failed' }); }
 });
 
-// POST /api/data — save all app state
 app.post('/api/data', (req, res) => {
   try {
-    const data = req.body;
-    if (!data || typeof data !== 'object') {
-      return res.status(400).json({ error: 'Invalid data' });
-    }
-    setData(data);
+    if (!req.body || typeof req.body !== 'object') return res.status(400).json({ error: 'Invalid data' });
+    setData(req.body);
     res.json({ ok: true });
-  } catch (err) {
-    console.error('POST /api/data error:', err);
-    res.status(500).json({ error: 'Failed to save data' });
-  }
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Save failed' }); }
 });
 
-// All other routes → serve React app (SPA routing)
 app.get('*', (req, res) => {
-  const indexPath = path.join(distPath, 'index.html');
-  if (fs.existsSync(indexPath)) {
-    res.sendFile(indexPath);
-  } else {
-    res.status(503).send('App not built yet. Run: npm run build');
-  }
+  const idx = path.join(distPath, 'index.html');
+  if (fs.existsSync(idx)) res.sendFile(idx);
+  else res.status(503).send('App not built yet. Run: npm run build');
 });
 
-// ── Start ────────────────────────────────────────────────────
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n😊 Happy Face server running!`);
   console.log(`   Local:   http://localhost:${PORT}`);
-  console.log(`   Network: http://YOUR_SERVER_IP:${PORT}`);
-  console.log(`   DB:      ${DB_PATH}\n`);
+  console.log(`   DB:      ${DB_PATH} ${fs.existsSync(DB_PATH) ? '(existing)' : '(will be created on first save)'}\n`);
 });
