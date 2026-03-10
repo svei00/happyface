@@ -160,3 +160,21 @@ Photos are stored as base64 text inside SQLite. When your wife uploads a photo o
 
 ### Settings hint
 - Added note below photo pickers: "Brand Logo appears centered on the card behind content. Opacity is set separately in Settings above."
+
+---
+
+## v3.5 — 2026-03
+
+### Kid card layout redesigned
+Card content now flows in clear rows top to bottom:
+1. **Avatar + kid name**
+2. **🎁 Prize name** (left) · **Prize photo thumbnail** (right, 38×38px with colored border) — same photo used as background AND as thumbnail, same source
+3. **Brand logo** — centered between prize name and progress bar, no overlap with anything
+4. **Face count badges** (😊 count · 😡 count)
+5. **Progress bar + % to goal**
+
+### Version indicator moved
+Removed from the header line. Now shows as a small `v3.5` at the very bottom of the home screen — discrete, out of the way.
+
+### Bug fix
+- Logo no longer overlaps text — removed conflicting absolute/z-index layering. Card now uses normal document flow (flexbox column) so each row sits cleanly below the previous one.
