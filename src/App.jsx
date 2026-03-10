@@ -155,7 +155,7 @@ function saveData(d) {
 
 function makeDefaultData() {
   return {
-    settings: { pin: "1234", badFaceBehavior: "separate", gridRows: 10, gridCols: 7, seasonalMode: "auto", prizeOpacity: 0.08, biometricCredentialId: null },
+    settings: { pin: "1234", badFaceBehavior: "separate", gridRows: 10, gridCols: 7, seasonalMode: "auto", prizeOpacity: 0.08, logoOpacity: 1.0, biometricCredentialId: null },
     currentDraw: { id: 1, startDate: new Date().toISOString().split("T")[0], winner: null },
     kids: [
       { id: "k1", name: "Eileencita", photo: null, prizePhoto: null, prizeName: "Special Prize!", prizeBrandLogo: null, goodFaces: [], badFaces: [], paletteIdx: 1 },
@@ -213,12 +213,37 @@ async function authenticateBiometric(credentialId) {
 }
 
 function useLongPress(onLong, onTap, ms = 600) {
-  const timer = useRef(null);
-  const fired = useRef(false);
-  const start = useCallback(() => { fired.current = false; timer.current = setTimeout(() => { fired.current = true; onLong(); }, ms); }, [onLong, ms]);
-  const end   = useCallback(() => { clearTimeout(timer.current); if (!fired.current) onTap(); }, [onTap]);
+  const timer  = useRef(null);
+  const fired  = useRef(false);
+  const startX = useRef(0);
+  const startY = useRef(0);
+
+  const start = useCallback((e) => {
+    fired.current = false;
+    const t = e.touches?.[0] || e;
+    startX.current = t.clientX;
+    startY.current = t.clientY;
+    timer.current = setTimeout(() => { fired.current = true; onLong(); }, ms);
+  }, [onLong, ms]);
+
+  const move = useCallback((e) => {
+    const t = e.touches?.[0] || e;
+    const dx = Math.abs(t.clientX - startX.current);
+    const dy = Math.abs(t.clientY - startY.current);
+    if (dx > 8 || dy > 8) clearTimeout(timer.current); // cancel if scrolling
+  }, []);
+
+  const end = useCallback(() => {
+    clearTimeout(timer.current);
+    if (!fired.current) onTap();
+  }, [onTap]);
+
   const cancel = useCallback(() => clearTimeout(timer.current), []);
-  return { onMouseDown: start, onMouseUp: end, onMouseLeave: cancel, onTouchStart: start, onTouchEnd: end };
+
+  return {
+    onMouseDown: start, onMouseUp: end, onMouseLeave: cancel,
+    onTouchStart: start, onTouchMove: move, onTouchEnd: end,
+  };
 }
 
 function KidAvatar({ kid, size = 56, ring = true }) {
@@ -350,11 +375,19 @@ function HomeScreen({ data, onSelectKid, onOpenSettings }) {
             const pal = KID_PALETTES[kid.paletteIdx % KID_PALETTES.length];
             const isBlocked = data.settings.badFaceBehavior === "block" && kid.badFaces.length > 0;
             return (
-              <button key={kid.id} onClick={() => onSelectKid(kid.id)} style={{ border: "none", cursor: "pointer", textAlign: "left", background: "#fff", borderRadius: 22, padding: 16, boxShadow: "0 4px 20px #0000000d", borderLeft: `5px solid ${pal.color}`, position: "relative", overflow: "hidden" }}>
-                {isBlocked && <div style={{ position: "absolute", top: 8, right: 8, background: "#FF4444", color: "#fff", borderRadius: 8, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>🚫 BLOCKED</div>}
-                {kid.prizePhoto && <div style={{ position: "absolute", inset: 0, backgroundImage: `url(${kid.prizePhoto})`, backgroundSize: "cover", backgroundPosition: "center", opacity, borderRadius: 18 }} />}
-                {kid.prizeBrandLogo && <div style={{ position: "absolute", bottom: 8, right: 8, opacity: opacity * 3, pointerEvents: "none" }}><img src={kid.prizeBrandLogo} alt="brand" style={{ height: 28, objectFit: "contain" }} /></div>}
-                <div style={{ position: "relative" }}>
+              <button key={kid.id} onClick={() => onSelectKid(kid.id)} style={{ border: "none", cursor: "pointer", textAlign: "left", background: "#fff", borderRadius: 22, padding: 16, paddingBottom: 22, minHeight: 210, boxShadow: "0 4px 20px #0000000d", borderLeft: `5px solid ${pal.color}`, position: "relative", overflow: "hidden" }}>
+                {/* z0 — prize photo background watermark */}
+                {kid.prizePhoto && <div style={{ position: "absolute", inset: 0, backgroundImage: `url(${kid.prizePhoto})`, backgroundSize: "cover", backgroundPosition: "center", opacity, borderRadius: 18, zIndex: 0 }} />}
+                {/* z1 — brand logo centered, behind all text */}
+                {kid.prizeBrandLogo && (
+                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", zIndex: 1 }}>
+                    <img src={kid.prizeBrandLogo} alt="brand" style={{ maxWidth: "65%", maxHeight: 52, objectFit: "contain", opacity: data.settings.logoOpacity ?? 1.0, borderRadius: 8 }} />
+                  </div>
+                )}
+                {/* z2 — blocked badge */}
+                {isBlocked && <div style={{ position: "absolute", top: 8, right: 8, background: "#FF4444", color: "#fff", borderRadius: 8, padding: "2px 8px", fontSize: 10, fontWeight: 700, zIndex: 3 }}>🚫 BLOCKED</div>}
+                {/* z3 — card content always on top */}
+                <div style={{ position: "relative", zIndex: 2 }}>
                   <KidAvatar kid={kid} size={52} />
                   <div style={{ marginTop: 10, fontWeight: 700, fontSize: 18, color: "#1A1A2E" }}>{kid.name}</div>
                   <div style={{ fontSize: 12, color: "#9B8FA0", marginBottom: 10 }}>🎁 {kid.prizeName}</div>
@@ -363,7 +396,7 @@ function HomeScreen({ data, onSelectKid, onOpenSettings }) {
                     {kid.badFaces.length > 0 && <span style={{ background: "#FFF0F0", color: "#FF4444", borderRadius: 8, padding: "3px 10px", fontSize: 12, fontWeight: 600 }}>{kid.badFaces.length} 😡</span>}
                   </div>
                   <ProgressBar value={kid.goodFaces.length} max={totalCells} color={pal.color} />
-                  <div style={{ fontSize: 11, color: "#9B8FA0", marginTop: 4 }}>{Math.round((kid.goodFaces.length / totalCells) * 100)}% to goal</div>
+                  <div style={{ fontSize: 11, color: "#9B8FA0", marginTop: 6 }}>{Math.round((kid.goodFaces.length / totalCells) * 100)}% to goal</div>
                 </div>
               </button>
             );
@@ -378,7 +411,7 @@ function GridCell({ face, cellIndex, onTap, onLongPress, size }) {
   const isGood = face ? GOOD_ID_SET.has(face.faceId) : null;
   const lp = useLongPress(useCallback(() => onLongPress(cellIndex), [cellIndex, onLongPress]), useCallback(() => onTap(cellIndex), [cellIndex, onTap]));
   return (
-    <div {...lp} style={{ width: size, height: size, borderRadius: size * 0.22, background: face ? (isGood ? "#DCFCE7" : "#FEE2E2") : "#F0EBE6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.56, cursor: "pointer", border: face ? (isGood ? "1.5px solid #86EFAC" : "1.5px solid #FCA5A5") : "1.5px dashed #D4C9C2", userSelect: "none", WebkitUserSelect: "none", transition: "transform 0.1s" }}>
+    <div {...lp} style={{ width: size, height: size, touchAction: "none", borderRadius: size * 0.22, background: face ? (isGood ? "#DCFCE7" : "#FEE2E2") : "#F0EBE6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.56, cursor: "pointer", border: face ? (isGood ? "1.5px solid #86EFAC" : "1.5px solid #FCA5A5") : "1.5px dashed #D4C9C2", userSelect: "none", WebkitUserSelect: "none", transition: "transform 0.1s" }}>
       {face ? (FACE_MAP[face.faceId]?.emoji || "") : ""}
     </div>
   );
@@ -540,11 +573,10 @@ function BioSection({ credentialId, onRegister, onRemove }) {
   if (!available) {
     return (
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-        <div>
+        <div style={{ flex:1 }}>
           <div style={{ fontWeight:600, fontSize:15 }}>👆 Fingerprint Unlock</div>
-          <div style={{ fontSize:12, color:"#9B8FA0" }}>Not available on this device / browser</div>
+          <div style={{ fontSize:12, color:"#9B8FA0" }}>Requires HTTPS — use your <strong>https://villanueva.ddns.net</strong> address instead of the local IP, then register here.</div>
         </div>
-        <div style={{ fontSize:11, color:"#D4C9C2", background:"#F8F5F2", borderRadius:8, padding:"4px 10px" }}>N/A</div>
       </div>
     );
   }
@@ -616,7 +648,10 @@ function SettingsScreen({ data, updateData, onBack }) {
         {card(<>{row("Columns (days)",<div style={{display:"flex",gap:6}}>{[5,6,7].map(n=><button key={n} onClick={()=>save({gridCols:n})} style={{width:36,height:36,borderRadius:10,border:"none",cursor:"pointer",background:data.settings.gridCols===n?"#1A1A2E":"#F0EBE6",color:data.settings.gridCols===n?"#fff":"#1A1A2E",fontWeight:600}}>{n}</button>)}</div>)}{row("Rows (per day)",<div style={{display:"flex",gap:6}}>{[8,10,12].map(n=><button key={n} onClick={()=>save({gridRows:n})} style={{width:36,height:36,borderRadius:10,border:"none",cursor:"pointer",background:data.settings.gridRows===n?"#1A1A2E":"#F0EBE6",color:data.settings.gridRows===n?"#fff":"#1A1A2E",fontWeight:600}}>{n}</button>)}</div>)}</>)}
 
         {h2("Prize Background Opacity")}
-        {card(<div style={{padding:"14px 0"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><span style={{fontSize:14,color:"#1A1A2E",fontWeight:500}}>🎁 Visibility: <strong>{Math.round(opacity*400)}%</strong></span><span style={{fontSize:12,color:"#9B8FA0"}}>All grids & cards</span></div><input type="range" min={0.02} max={0.35} step={0.01} value={opacity} onChange={e=>save({prizeOpacity:parseFloat(e.target.value)})} style={{width:"100%",accentColor:"#1A1A2E"}} /><div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#9B8FA0",marginTop:4}}><span>Subtle</span><span>Bold</span></div></div>)}
+        {card(<div style={{padding:"14px 0"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><span style={{fontSize:14,color:"#1A1A2E",fontWeight:500}}>🎁 Prize Photo: <strong>{Math.round(opacity*400)}%</strong></span><span style={{fontSize:12,color:"#9B8FA0"}}>Background watermark</span></div><input type="range" min={0.02} max={0.35} step={0.01} value={opacity} onChange={e=>save({prizeOpacity:parseFloat(e.target.value)})} style={{width:"100%",accentColor:"#1A1A2E"}} /><div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#9B8FA0",marginTop:4}}><span>Subtle</span><span>Bold</span></div></div>)}
+
+        {h2("Brand Logo Opacity")}
+        {card(<div style={{padding:"14px 0"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><span style={{fontSize:14,color:"#1A1A2E",fontWeight:500}}>🏷️ Logo: <strong>{Math.round((data.settings.logoOpacity??1)*100)}%</strong></span><span style={{fontSize:12,color:"#9B8FA0"}}>Centered on card</span></div><input type="range" min={0.1} max={1.0} step={0.05} value={data.settings.logoOpacity??1} onChange={e=>save({logoOpacity:parseFloat(e.target.value)})} style={{width:"100%",accentColor:"#1A1A2E"}} /><div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#9B8FA0",marginTop:4}}><span>Transparent</span><span>Full (default)</span></div></div>)}
 
         {h2("🎭 Seasonal Faces")}
         {card(<><div style={{fontSize:12,color:"#9B8FA0",padding:"10px 0 10px",lineHeight:1.5}}>Row 3 auto-swaps by season. Force any season anytime!</div><div style={{display:"flex",flexWrap:"wrap",gap:8,paddingBottom:12}}>{seasonOpts.map(opt=><button key={opt.val} onClick={()=>save({seasonalMode:opt.val})} style={{padding:"8px 14px",borderRadius:12,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,background:sm===opt.val?"#1A1A2E":"#F0EBE6",color:sm===opt.val?"#fff":"#1A1A2E"}}>{opt.label}</button>)}</div><div style={{fontSize:12,color:"#9B8FA0",paddingBottom:10}}>ℹ️ {seasonOpts.find(o=>o.val===sm)?.desc}</div></>)}
@@ -630,7 +665,7 @@ function SettingsScreen({ data, updateData, onBack }) {
                 <KidAvatar kid={kid} size={50} />
                 <div style={{ flex:1 }}>
                   <input value={kid.name} onChange={e=>updateKid(kid.id,{name:e.target.value})} style={{ fontSize:18,fontWeight:700,color:"#1A1A2E",border:"none",background:"transparent",width:"100%",fontFamily:"Fredoka,sans-serif",outline:"none" }} />
-                  <input value={kid.prizeName} onChange={e=>updateKid(kid.id,{prizeName:e.target.value})} style={{ fontSize:13,color:"#9B8FA0",border:"none",background:"transparent",width:"100%",fontFamily:"Fredoka,sans-serif",outline:"none" }} placeholder="Prize name..." />
+                  <div style={{ fontSize:12,color:"#9B8FA0" }}>Tap name above to edit</div>
                 </div>
                 {data.kids.length > 1 && <button onClick={()=>removeKid(kid.id)} style={{ background:"#FEE2E2",border:"none",borderRadius:10,padding:"6px 10px",cursor:"pointer",color:"#DC2626",fontSize:14 }}>✕</button>}
               </div>
@@ -640,11 +675,27 @@ function SettingsScreen({ data, updateData, onBack }) {
                   {KID_PALETTES.map((p,i) => <div key={i} onClick={()=>updateKid(kid.id,{paletteIdx:i})} style={{ width:28,height:28,borderRadius:"50%",background:p.gradient,cursor:"pointer",border:kid.paletteIdx===i?"3px solid #1A1A2E":"3px solid transparent",boxShadow:kid.paletteIdx===i?"0 0 0 2px #fff":"none" }} />)}
                 </div>
               </div>
+              {/* Prize name — prominent editable field */}
+              <div style={{ marginBottom:14 }}>
+                <div style={{ fontSize:12,fontWeight:700,color:"#9B8FA0",textTransform:"uppercase",letterSpacing:0.5,marginBottom:6 }}>🎁 Prize Name</div>
+                <div style={{ position:"relative" }}>
+                  <input
+                    value={kid.prizeName}
+                    onChange={e=>updateKid(kid.id,{prizeName:e.target.value})}
+                    style={{ width:"100%",fontSize:16,fontWeight:600,color:"#1A1A2E",border:"2px solid #E8E0DA",borderRadius:12,padding:"10px 14px 10px 36px",fontFamily:"Fredoka,sans-serif",outline:"none",background:"#FFFBF7" }}
+                    placeholder="e.g. Hot Wheels Twin Mill"
+                  />
+                  <span style={{ position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",fontSize:16,pointerEvents:"none" }}>🎁</span>
+                </div>
+                <div style={{ fontSize:11,color:"#C4B8BD",marginTop:4 }}>👆 Tap to edit — e.g. Hot Wheels Twin Mill · Night Shifter · Special Prize!</div>
+              </div>
+
               <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
                 <PhotoPicker label="Kid Photo" icon="👤" value={kid.photo} onSet={v=>updateKid(kid.id,{photo:v})} onClear={()=>updateKid(kid.id,{photo:null})} />
                 <PhotoPicker label="Prize Photo" icon="🎁" value={kid.prizePhoto} onSet={v=>updateKid(kid.id,{prizePhoto:v})} onClear={()=>updateKid(kid.id,{prizePhoto:null})} />
                 <PhotoPicker label="Brand Logo" icon="🏷️" value={kid.prizeBrandLogo} onSet={v=>updateKid(kid.id,{prizeBrandLogo:v})} onClear={()=>updateKid(kid.id,{prizeBrandLogo:null})} />
               </div>
+              <div style={{ fontSize:11,color:"#C4B8BD",marginTop:6 }}>🏷️ Brand Logo appears centered on the card behind content. Opacity is set separately in Settings above.</div>
             </div>
           );
         })}
@@ -739,7 +790,7 @@ export default function HappyFaceApp() {
   const [pinUnlocked, setPinUnlocked] = useState(false);
   const [facePicker, setFacePicker] = useState(null);
   const [cellOptions, setCellOptions] = useState(null);
-  const [defaultFaceId, setDefaultFaceId] = useState(null);
+  const [defaultFaceId, setDefaultFaceId] = useState("g1"); // 😊 default so tap always quick-adds
 
   useEffect(() => { loadData().then(setData); }, []);
 

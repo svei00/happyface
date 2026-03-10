@@ -124,3 +124,39 @@ Photos are stored as base64 text inside SQLite. When your wife uploads a photo o
 
 ### Database auto-creation
 - `happyface.db` is created automatically on first server start if it does not exist. No manual step needed. If the file already exists, it is left untouched.
+
+---
+
+## v3.3 — 2026-03
+
+### Bug Fixes
+- **Tap on grid now quick-adds immediately** — 😊 Happy Face is pre-set as the default on startup. Tap any empty cell and it adds instantly without opening any picker. Long press an empty cell to change the default to a different face
+- **Long press no longer misfires while scrolling** — touch movement detection added. If your finger moves more than 8px (i.e. you are scrolling), the long press is cancelled automatically so it never triggers accidentally
+- **`touchAction: none`** added to grid cells so the browser does not interfere with tap vs scroll detection
+
+### Removed
+- **Brand logo feature removed** — uploading a brand logo (Hot Wheels etc.) looked messy with arbitrary screenshots and downloaded images. Removed entirely to keep the cards clean. The prize photo background and prize name are still fully functional
+
+### Settings clarity
+- Prize name field now shows hint text: "👆 Tap to edit" so it is obvious it is editable
+- Fingerprint section now explains clearly that **HTTPS is required** — use `https://villanueva.ddns.net` through Nginx Proxy Manager instead of the local IP address `192.168.50.148:3456`. Register fingerprint after opening via the HTTPS domain
+
+### Prize opacity
+- Opacity slider now only controls the prize photo background — no conflict with the logo (which is removed)
+
+---
+
+## v3.4 — 2026-03
+
+### Brand Logo — restored and fixed properly
+- **Restored** — brand logo was incorrectly removed in v3.3. Apologies for that.
+- **Centered** — logo now appears in the center of the card, not bottom-right
+- **No transparency by default** — logo shows at 100% opacity by default
+- **Separate opacity control** — Settings now has two independent sliders:
+  - 🎁 Prize Photo (background watermark) — subtle by design, range 2%–35%
+  - 🏷️ Brand Logo (centered overlay) — full by default, range 10%–100%
+- **Logo sits behind all text and numbers** (z-index fixed) — percentage, name, face count are always readable on top
+- **Card taller** — `minHeight: 210px` added so logo never overlaps the progress bar or percentage
+
+### Settings hint
+- Added note below photo pickers: "Brand Logo appears centered on the card behind content. Opacity is set separately in Settings above."
