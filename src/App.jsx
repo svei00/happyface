@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════
 
+const APP_VERSION = "3.4";
+
 const PERM_GOOD_FACES = [
   { id: "g1",  emoji: "😊", label: "Happy" },
   { id: "g2",  emoji: "😄", label: "Big Smile" },
@@ -305,7 +307,10 @@ function HomeScreen({ data, onSelectKid, onOpenSettings }) {
       <div style={{ padding: "20px 20px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <div style={{ fontSize: 28, fontWeight: 700, color: "#1A1A2E", lineHeight: 1 }}>😊 Happy Face</div>
-          <div style={{ fontSize: 13, color: "#9B8FA0" }}>Draw #{data.currentDraw.id} · {data.currentDraw.startDate}</div>
+          <div style={{ fontSize: 13, color: "#9B8FA0", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <span>Draw #{data.currentDraw.id} · {data.currentDraw.startDate}</span>
+            <span style={{ fontSize: 10, color: "#D4C9C2", letterSpacing: 0.5 }}>v{APP_VERSION}</span>
+          </div>
         </div>
         <button onClick={onOpenSettings} style={{ background: "#1A1A2E", color: "#fff", border: "none", borderRadius: 14, padding: "10px 16px", fontSize: 22, cursor: "pointer" }}>⚙️</button>
       </div>
