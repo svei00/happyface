@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════
 
-const APP_VERSION = "3.5";
+const APP_VERSION = "3.6";
 
 const PERM_GOOD_FACES = [
   { id: "g1",  emoji: "😊", label: "Happy" },
@@ -377,44 +377,63 @@ function HomeScreen({ data, onSelectKid, onOpenSettings }) {
             const pal = KID_PALETTES[kid.paletteIdx % KID_PALETTES.length];
             const isBlocked = data.settings.badFaceBehavior === "block" && kid.badFaces.length > 0;
             return (
-              <button key={kid.id} onClick={() => onSelectKid(kid.id)} style={{ border: "none", cursor: "pointer", textAlign: "left", background: "#fff", borderRadius: 22, padding: 16, paddingBottom: 18, boxShadow: "0 4px 20px #0000000d", borderLeft: `5px solid ${pal.color}`, overflow: "hidden", display: "flex", flexDirection: "column", gap: 0 }}>
-                {/* Prize photo — subtle full-card background */}
-                {kid.prizePhoto && (
-                  <div style={{ position: "absolute", inset: 0, backgroundImage: `url(${kid.prizePhoto})`, backgroundSize: "cover", backgroundPosition: "center", opacity, borderRadius: 18, pointerEvents: "none" }} />
+              <button key={kid.id} onClick={() => onSelectKid(kid.id)} style={{
+                border: "none", cursor: "pointer", textAlign: "left",
+                background: "#fff", borderRadius: 22,
+                padding: 16, paddingBottom: 18,
+                boxShadow: "0 4px 20px #0000000d",
+                borderLeft: `5px solid ${pal.color}`,
+                position: "relative", overflow: "hidden",
+                display: "flex", flexDirection: "column", gap: 0,
+              }}>
+                {/* BLOCKED badge — top right */}
+                {isBlocked && (
+                  <div style={{ position: "absolute", top: 8, right: 8, background: "#FF4444", color: "#fff", borderRadius: 8, padding: "2px 8px", fontSize: 10, fontWeight: 700, zIndex: 2 }}>
+                    🚫 BLOCKED
+                  </div>
                 )}
-                {isBlocked && <div style={{ position: "absolute", top: 8, right: 8, background: "#FF4444", color: "#fff", borderRadius: 8, padding: "2px 8px", fontSize: 10, fontWeight: 700, zIndex: 2 }}>🚫 BLOCKED</div>}
 
                 {/* Row 1: Avatar + name */}
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6, position: "relative" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                   <KidAvatar kid={kid} size={46} />
                   <div style={{ fontWeight: 700, fontSize: 17, color: "#1A1A2E", lineHeight: 1.2 }}>{kid.name}</div>
                 </div>
 
-                {/* Row 2: Prize name left, prize photo thumbnail right */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, position: "relative" }}>
-                  <div style={{ fontSize: 12, color: "#9B8FA0", fontWeight: 500 }}>🎁 {kid.prizeName}</div>
-                  {kid.prizePhoto && (
-                    <img src={kid.prizePhoto} alt="prize" style={{ width: 38, height: 38, objectFit: "cover", borderRadius: 8, border: `2px solid ${pal.color}33`, flexShrink: 0 }} />
-                  )}
+                {/* Row 2: Prize name */}
+                <div style={{ fontSize: 12, color: "#9B8FA0", fontWeight: 500, marginBottom: 10 }}>
+                  🎁 {kid.prizeName}
                 </div>
 
-                {/* Row 3: Brand logo — centered between prize name and bar */}
-                {kid.prizeBrandLogo && (
-                  <div style={{ display: "flex", justifyContent: "center", alignItems: "center", marginBottom: 10, position: "relative" }}>
-                    <img src={kid.prizeBrandLogo} alt="brand" style={{ maxWidth: "80%", maxHeight: 44, objectFit: "contain", opacity: data.settings.logoOpacity ?? 1.0, borderRadius: 6 }} />
+                {/* Row 3: Brand logo + prize photo side by side, same height, centered */}
+                {(kid.prizeBrandLogo || kid.prizePhoto) && (
+                  <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                    {kid.prizeBrandLogo && (
+                      <img src={kid.prizeBrandLogo} alt="brand" style={{
+                        height: 44, width: 44, objectFit: "contain",
+                        opacity: data.settings.logoOpacity ?? 1.0,
+                        borderRadius: 8, background: "#F8F5F2", padding: 4,
+                      }} />
+                    )}
+                    {kid.prizePhoto && (
+                      <img src={kid.prizePhoto} alt="prize" style={{
+                        height: 44, width: 44, objectFit: "cover",
+                        borderRadius: 8, border: `2px solid ${pal.color}44`,
+                        flexShrink: 0,
+                      }} />
+                    )}
                   </div>
                 )}
 
                 {/* Row 4: Face count badges */}
-                <div style={{ display: "flex", gap: 6, marginBottom: 8, position: "relative" }}>
+                <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
                   <span style={{ background: pal.light, color: pal.color, borderRadius: 8, padding: "3px 8px", fontSize: 12, fontWeight: 600 }}>{kid.goodFaces.length} 😊</span>
                   {kid.badFaces.length > 0 && <span style={{ background: "#FFF0F0", color: "#FF4444", borderRadius: 8, padding: "3px 8px", fontSize: 12, fontWeight: 600 }}>{kid.badFaces.length} 😡</span>}
                 </div>
 
                 {/* Row 5: Progress bar + % */}
-                <div style={{ position: "relative" }}>
-                  <ProgressBar value={kid.goodFaces.length} max={totalCells} color={pal.color} />
-                  <div style={{ fontSize: 11, color: "#9B8FA0", marginTop: 5 }}>{Math.round((kid.goodFaces.length / totalCells) * 100)}% to goal</div>
+                <ProgressBar value={kid.goodFaces.length} max={totalCells} color={pal.color} />
+                <div style={{ fontSize: 11, color: "#9B8FA0", marginTop: 5 }}>
+                  {Math.round((kid.goodFaces.length / totalCells) * 100)}% to goal
                 </div>
               </button>
             );

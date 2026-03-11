@@ -178,3 +178,21 @@ Removed from the header line. Now shows as a small `v3.5` at the very bottom of 
 
 ### Bug fix
 - Logo no longer overlaps text — removed conflicting absolute/z-index layering. Card now uses normal document flow (flexbox column) so each row sits cleanly below the previous one.
+
+---
+
+## v3.6 — 2026-03
+
+### Bug fixes (v3.5 regressions)
+- **Prize photo removed from main dashboard background** — it was never requested there. The main dashboard background is plain cream (#FFF9F0) as always. Prize photo only appears inside each kid's individual grid screen.
+- **Card `position: relative` fixed** — the button was missing `position: relative` so the absolutely positioned elements (blocked badge) were escaping to the full page. Now properly contained.
+- **Version restored** — v3.6 shown at bottom of home screen.
+
+### Card layout corrected
+- Row 1: Avatar + kid name
+- Row 2: 🎁 Prize name
+- Row 3: Brand logo and prize photo **side by side**, same size (44×44px), centered together — harmonious as requested
+- Row 4: Face count badges
+- Row 5: Progress bar + % to goal
+
+Brand logo has a light background pad (so transparent PNGs look clean). Prize photo has a colored border matching the kid's color.
