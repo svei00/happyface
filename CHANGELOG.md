@@ -196,3 +196,17 @@ Removed from the header line. Now shows as a small `v3.5` at the very bottom of 
 - Row 5: Progress bar + % to goal
 
 Brand logo has a light background pad (so transparent PNGs look clean). Prize photo has a colored border matching the kid's color.
+
+---
+
+## v3.7 — 2026-03
+
+### Kid card fixes
+- **Prize photo background restored** on each kid's card — each kid shows their own prize photo as a subtle background watermark (opacity controlled by the Prize Photo slider). Fully contained within the card thanks to `overflow: hidden` — no bleed to the page
+- **Thumbnails** (brand logo + prize photo 44×44) now share **one single opacity slider** — "🏷️ Logo & Prize Photo" in Settings controls both together
+- **Same border** on both thumbnails — colored border matching the kid's color (`pal.color` at 40% opacity) on both logo and prize photo for visual harmony
+- Brand logo keeps its light background pad so transparent PNGs look clean
+
+### Desktop layout
+- Body background changed to `#EDE8E0` (slightly darker warm grey) so the 480px app container is visible as a floating card on desktop/laptop screens
+- App container gets a subtle `box-shadow` so it looks like a phone on a surface when viewed on a wide screen

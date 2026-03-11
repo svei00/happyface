@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════
 
-const APP_VERSION = "3.6";
+const APP_VERSION = "3.7";
 
 const PERM_GOOD_FACES = [
   { id: "g1",  emoji: "😊", label: "Happy" },
@@ -157,7 +157,7 @@ function saveData(d) {
 
 function makeDefaultData() {
   return {
-    settings: { pin: "1234", badFaceBehavior: "separate", gridRows: 10, gridCols: 7, seasonalMode: "auto", prizeOpacity: 0.08, logoOpacity: 1.0, biometricCredentialId: null },
+    settings: { pin: "1234", badFaceBehavior: "separate", gridRows: 10, gridCols: 7, seasonalMode: "auto", prizeOpacity: 0.08, thumbnailOpacity: 1.0, biometricCredentialId: null },
     currentDraw: { id: 1, startDate: new Date().toISOString().split("T")[0], winner: null },
     kids: [
       { id: "k1", name: "Eileencita", photo: null, prizePhoto: null, prizeName: "Special Prize!", prizeBrandLogo: null, goodFaces: [], badFaces: [], paletteIdx: 1 },
@@ -386,7 +386,17 @@ function HomeScreen({ data, onSelectKid, onOpenSettings }) {
                 position: "relative", overflow: "hidden",
                 display: "flex", flexDirection: "column", gap: 0,
               }}>
-                {/* BLOCKED badge — top right */}
+                {/* Prize photo — subtle background, fully contained by overflow:hidden */}
+                {kid.prizePhoto && (
+                  <div style={{
+                    position: "absolute", inset: 0,
+                    backgroundImage: `url(${kid.prizePhoto})`,
+                    backgroundSize: "cover", backgroundPosition: "center",
+                    opacity: opacity, pointerEvents: "none",
+                  }} />
+                )}
+
+                {/* BLOCKED badge */}
                 {isBlocked && (
                   <div style={{ position: "absolute", top: 8, right: 8, background: "#FF4444", color: "#fff", borderRadius: 8, padding: "2px 8px", fontSize: 10, fontWeight: 700, zIndex: 2 }}>
                     🚫 BLOCKED
@@ -394,30 +404,34 @@ function HomeScreen({ data, onSelectKid, onOpenSettings }) {
                 )}
 
                 {/* Row 1: Avatar + name */}
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, position: "relative" }}>
                   <KidAvatar kid={kid} size={46} />
                   <div style={{ fontWeight: 700, fontSize: 17, color: "#1A1A2E", lineHeight: 1.2 }}>{kid.name}</div>
                 </div>
 
                 {/* Row 2: Prize name */}
-                <div style={{ fontSize: 12, color: "#9B8FA0", fontWeight: 500, marginBottom: 10 }}>
+                <div style={{ fontSize: 12, color: "#9B8FA0", fontWeight: 500, marginBottom: 10, position: "relative" }}>
                   🎁 {kid.prizeName}
                 </div>
 
-                {/* Row 3: Brand logo + prize photo side by side, same height, centered */}
+                {/* Row 3: Brand logo + prize photo — same size, same border, same opacity control */}
                 {(kid.prizeBrandLogo || kid.prizePhoto) && (
-                  <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10, marginBottom: 12, position: "relative" }}>
                     {kid.prizeBrandLogo && (
                       <img src={kid.prizeBrandLogo} alt="brand" style={{
                         height: 44, width: 44, objectFit: "contain",
-                        opacity: data.settings.logoOpacity ?? 1.0,
-                        borderRadius: 8, background: "#F8F5F2", padding: 4,
+                        opacity: data.settings.thumbnailOpacity ?? 1.0,
+                        borderRadius: 8,
+                        border: `2px solid ${pal.color}66`,
+                        background: "#F8F5F2", padding: 3,
                       }} />
                     )}
                     {kid.prizePhoto && (
                       <img src={kid.prizePhoto} alt="prize" style={{
                         height: 44, width: 44, objectFit: "cover",
-                        borderRadius: 8, border: `2px solid ${pal.color}44`,
+                        opacity: data.settings.thumbnailOpacity ?? 1.0,
+                        borderRadius: 8,
+                        border: `2px solid ${pal.color}66`,
                         flexShrink: 0,
                       }} />
                     )}
@@ -425,15 +439,17 @@ function HomeScreen({ data, onSelectKid, onOpenSettings }) {
                 )}
 
                 {/* Row 4: Face count badges */}
-                <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                <div style={{ display: "flex", gap: 6, marginBottom: 8, position: "relative" }}>
                   <span style={{ background: pal.light, color: pal.color, borderRadius: 8, padding: "3px 8px", fontSize: 12, fontWeight: 600 }}>{kid.goodFaces.length} 😊</span>
                   {kid.badFaces.length > 0 && <span style={{ background: "#FFF0F0", color: "#FF4444", borderRadius: 8, padding: "3px 8px", fontSize: 12, fontWeight: 600 }}>{kid.badFaces.length} 😡</span>}
                 </div>
 
                 {/* Row 5: Progress bar + % */}
-                <ProgressBar value={kid.goodFaces.length} max={totalCells} color={pal.color} />
-                <div style={{ fontSize: 11, color: "#9B8FA0", marginTop: 5 }}>
-                  {Math.round((kid.goodFaces.length / totalCells) * 100)}% to goal
+                <div style={{ position: "relative" }}>
+                  <ProgressBar value={kid.goodFaces.length} max={totalCells} color={pal.color} />
+                  <div style={{ fontSize: 11, color: "#9B8FA0", marginTop: 5 }}>
+                    {Math.round((kid.goodFaces.length / totalCells) * 100)}% to goal
+                  </div>
                 </div>
               </button>
             );
@@ -691,8 +707,8 @@ function SettingsScreen({ data, updateData, onBack }) {
         {h2("Prize Background Opacity")}
         {card(<div style={{padding:"14px 0"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><span style={{fontSize:14,color:"#1A1A2E",fontWeight:500}}>🎁 Prize Photo: <strong>{Math.round(opacity*400)}%</strong></span><span style={{fontSize:12,color:"#9B8FA0"}}>Background watermark</span></div><input type="range" min={0.02} max={0.35} step={0.01} value={opacity} onChange={e=>save({prizeOpacity:parseFloat(e.target.value)})} style={{width:"100%",accentColor:"#1A1A2E"}} /><div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#9B8FA0",marginTop:4}}><span>Subtle</span><span>Bold</span></div></div>)}
 
-        {h2("Brand Logo Opacity")}
-        {card(<div style={{padding:"14px 0"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><span style={{fontSize:14,color:"#1A1A2E",fontWeight:500}}>🏷️ Logo: <strong>{Math.round((data.settings.logoOpacity??1)*100)}%</strong></span><span style={{fontSize:12,color:"#9B8FA0"}}>Centered on card</span></div><input type="range" min={0.1} max={1.0} step={0.05} value={data.settings.logoOpacity??1} onChange={e=>save({logoOpacity:parseFloat(e.target.value)})} style={{width:"100%",accentColor:"#1A1A2E"}} /><div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#9B8FA0",marginTop:4}}><span>Transparent</span><span>Full (default)</span></div></div>)}
+        {h2("Thumbnails Opacity")}
+        {card(<div style={{padding:"14px 0"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><span style={{fontSize:14,color:"#1A1A2E",fontWeight:500}}>🏷️ Logo &amp; Prize Photo: <strong>{Math.round((data.settings.thumbnailOpacity??1)*100)}%</strong></span><span style={{fontSize:12,color:"#9B8FA0"}}>Both 44×44 images together</span></div><input type="range" min={0.1} max={1.0} step={0.05} value={data.settings.thumbnailOpacity??1} onChange={e=>save({thumbnailOpacity:parseFloat(e.target.value)})} style={{width:"100%",accentColor:"#1A1A2E"}} /><div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#9B8FA0",marginTop:4}}><span>Faded</span><span>Full (default)</span></div></div>)}
 
         {h2("🎭 Seasonal Faces")}
         {card(<><div style={{fontSize:12,color:"#9B8FA0",padding:"10px 0 10px",lineHeight:1.5}}>Row 3 auto-swaps by season. Force any season anytime!</div><div style={{display:"flex",flexWrap:"wrap",gap:8,paddingBottom:12}}>{seasonOpts.map(opt=><button key={opt.val} onClick={()=>save({seasonalMode:opt.val})} style={{padding:"8px 14px",borderRadius:12,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,background:sm===opt.val?"#1A1A2E":"#F0EBE6",color:sm===opt.val?"#fff":"#1A1A2E"}}>{opt.label}</button>)}</div><div style={{fontSize:12,color:"#9B8FA0",paddingBottom:10}}>ℹ️ {seasonOpts.find(o=>o.val===sm)?.desc}</div></>)}
@@ -893,7 +909,7 @@ export default function HappyFaceApp() {
   };
 
   return (
-    <div style={{ fontFamily: "'Fredoka', sans-serif", background: "#FFF9F0", minHeight: "100vh", maxWidth: 480, margin: "0 auto", position: "relative" }}>
+    <div style={{ fontFamily: "'Fredoka', sans-serif", background: "#FFF9F0", minHeight: "100vh", maxWidth: 480, margin: "0 auto", position: "relative", boxShadow: "0 0 60px #0000001a" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap');
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
