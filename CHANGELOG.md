@@ -210,3 +210,19 @@ Brand logo has a light background pad (so transparent PNGs look clean). Prize ph
 ### Desktop layout
 - Body background changed to `#EDE8E0` (slightly darker warm grey) so the 480px app container is visible as a floating card on desktop/laptop screens
 - App container gets a subtle `box-shadow` so it looks like a phone on a surface when viewed on a wide screen
+
+---
+
+## v3.8 — 2026-03
+
+### Bug fixes
+- **Ghost click / double face fixed** — closing any modal (face picker or cell options) now blocks grid cell taps for 350ms. The "phantom tap" that fell through the modal backdrop and added an unwanted face is gone.
+- **Default face no longer resets between kids** — `defaultFaceId` lives at the app root level and persists for the whole session. Switching from Andy's grid to Eileencita's grid keeps whatever default you last set. Starts as 😊 on fresh load.
+- **Long press on empty cell no longer opens the picker accidentally** — long pressing an empty cell does nothing. Changed default face is now done explicitly via the 🔄 button next to the main Add button at the bottom of the grid. This also fixes the accidental trigger while scrolling.
+
+### New — Grid PIN protection (once per session)
+- Tapping a kid card on the home screen now asks for PIN or fingerprint before opening the grid
+- Once unlocked, ALL kid grids stay open for the rest of the session — no need to re-enter PIN every time you switch kids
+- Session resets when the page reloads (app restart)
+- PIN screen shows "Unlock to manage the grid" subtitle when purpose is grid, "Enter your PIN to continue" for settings
+- Kids can no longer open the grid themselves 🔒

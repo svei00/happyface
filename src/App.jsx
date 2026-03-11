@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════
 
-const APP_VERSION = "3.7";
+const APP_VERSION = "3.8";
 
 const PERM_GOOD_FACES = [
   { id: "g1",  emoji: "😊", label: "Happy" },
@@ -479,7 +479,7 @@ function BadFaceChip({ faceId, index, onLongPress }) {
   return <div {...lp} style={{ background: "#FEE2E2", borderRadius: 10, padding: "6px 10px", fontSize: 22, cursor: "pointer", userSelect: "none", border: "1.5px solid #FCA5A5" }}>{FACE_MAP[faceId]?.emoji}</div>;
 }
 
-function GridScreen({ kid, data, totalCells, onBack, onAddFace, onCellTap, onCellLongPress, defaultFaceId }) {
+function GridScreen({ kid, data, totalCells, onBack, onAddFace, onChangeDefault, onCellTap, onCellLongPress, defaultFaceId }) {
   const pal = KID_PALETTES[kid.paletteIdx % KID_PALETTES.length];
   const cols = data.settings.gridCols, rows = data.settings.gridRows;
   const opacity = data.settings.prizeOpacity ?? 0.08;
@@ -537,16 +537,23 @@ function GridScreen({ kid, data, totalCells, onBack, onAddFace, onCellTap, onCel
               </div>
             </div>
           )}
-          <button onClick={onAddFace} disabled={isBlocked || kid.goodFaces.length >= totalCells} style={{ marginTop: 16, width: "100%", padding: "16px", background: isBlocked || kid.goodFaces.length >= totalCells ? "#D4C9C2" : pal.gradient, color: "#fff", border: "none", borderRadius: 18, fontSize: 16, fontWeight: 700, cursor: isBlocked ? "not-allowed" : "pointer", boxShadow: isBlocked ? "none" : `0 4px 20px ${pal.color}66` }}>
-            {isBlocked ? "🚫 Blocked – earn back first" : kid.goodFaces.length >= totalCells ? "🎉 Grid Complete!" : defaultFace ? `＋ Add ${defaultFace.emoji} ${defaultFace.label}` : "＋ Add a Happy Face"}
-          </button>
+          <div style={{ marginTop: 16, display: "flex", gap: 8, alignItems: "stretch" }}>
+            <button onClick={onAddFace} disabled={isBlocked || kid.goodFaces.length >= totalCells} style={{ flex: 1, padding: "16px", background: isBlocked || kid.goodFaces.length >= totalCells ? "#D4C9C2" : pal.gradient, color: "#fff", border: "none", borderRadius: 18, fontSize: 16, fontWeight: 700, cursor: isBlocked ? "not-allowed" : "pointer", boxShadow: isBlocked ? "none" : `0 4px 20px ${pal.color}66` }}>
+              {isBlocked ? "🚫 Blocked – earn back first" : kid.goodFaces.length >= totalCells ? "🎉 Grid Complete!" : defaultFace ? `＋ Add ${defaultFace.emoji} ${defaultFace.label}` : "＋ Add a Happy Face"}
+            </button>
+            {!isBlocked && kid.goodFaces.length < totalCells && (
+              <button onClick={onChangeDefault} title="Change default face" style={{ padding: "16px 14px", background: "#F0EBE6", border: "none", borderRadius: 18, fontSize: 20, cursor: "pointer", flexShrink: 0 }}>
+                🔄
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function PINScreen({ correctPin, credentialId, onSuccess, onBack }) {
+function PINScreen({ correctPin, credentialId, onSuccess, onBack, purpose = "settings" }) {
   const [entered, setEntered] = useState("");
   const [shake, setShake] = useState(false);
   const [hint, setHint] = useState("");
@@ -591,7 +598,7 @@ function PINScreen({ correctPin, credentialId, onSuccess, onBack }) {
       <div style={{ fontSize: 52, marginBottom: 8, animation: "spin-slow 4s linear infinite" }}>😊</div>
       <div style={{ fontSize: 24, fontWeight: 700, color: "#1A1A2E", marginBottom: 6 }}>Parent Area</div>
       <div style={{ fontSize: 15, color: "#9B8FA0", marginBottom: bioAvail ? 16 : 32 }}>
-        {bioAvail ? "Use fingerprint or PIN" : "Enter your PIN to continue"}
+        {bioAvail ? "Use fingerprint or PIN" : purpose === "grid" ? "Unlock to manage the grid" : "Enter your PIN to continue"}
       </div>
 
       {bioAvail && (
@@ -845,9 +852,13 @@ export default function HappyFaceApp() {
   const [screen, setScreen] = useState("home");
   const [activeKidId, setActiveKidId] = useState(null);
   const [pinUnlocked, setPinUnlocked] = useState(false);
+  const [gridUnlocked, setGridUnlocked] = useState(false);   // once per session
+  const [pinPurpose, setPinPurpose] = useState("settings");  // "settings" | "grid"
+  const [pendingKidId, setPendingKidId] = useState(null);    // kid waiting for grid unlock
   const [facePicker, setFacePicker] = useState(null);
   const [cellOptions, setCellOptions] = useState(null);
-  const [defaultFaceId, setDefaultFaceId] = useState("g1"); // 😊 default so tap always quick-adds
+  const [defaultFaceId, setDefaultFaceId] = useState("g1");
+  const modalClosedAt = useRef(0); // ghost-click guard
 
   useEffect(() => { loadData().then(setData); }, []);
 
@@ -888,6 +899,7 @@ export default function HappyFaceApp() {
   };
 
   const handleCellTap = idx => {
+    if (Date.now() - modalClosedAt.current < 350) return; // ghost-click guard
     if (isActiveBlocked) return;
     const face = activeKid?.goodFaces[idx];
     if (face) { setCellOptions({ type: "good", idx }); }
@@ -899,7 +911,7 @@ export default function HappyFaceApp() {
     if (typeof idx === "string" && idx.startsWith("bad-")) { setCellOptions({ type: "bad", idx: parseInt(idx.split("-")[1]) }); return; }
     const face = activeKid?.goodFaces[idx];
     if (face) { setCellOptions({ type: "good", idx }); }
-    else { setFacePicker({ mode: "set-default" }); }
+    // empty cell long press does nothing — use the "Change Default" button below the grid
   };
 
   const handleRemove = () => {
@@ -920,12 +932,24 @@ export default function HappyFaceApp() {
         button:active { transform: scale(0.95); }
         input[type=range] { height: 6px; }
       `}</style>
-      {screen === "home" && <HomeScreen data={data} onSelectKid={id => { setActiveKidId(id); setScreen("grid"); }} onOpenSettings={() => { setPinUnlocked(false); setScreen("pin"); }} />}
-      {screen === "grid" && activeKid && <GridScreen kid={activeKid} data={data} totalCells={totalCells} onBack={() => setScreen("home")} onAddFace={() => setFacePicker({ mode: "add" })} onCellTap={handleCellTap} onCellLongPress={handleCellLongPress} defaultFaceId={defaultFaceId} />}
-      {screen === "pin" && <PINScreen correctPin={data.settings.pin} credentialId={data.settings.biometricCredentialId} onSuccess={() => { setPinUnlocked(true); setScreen("settings"); }} onBack={() => setScreen("home")} />}
+      {screen === "home" && <HomeScreen data={data} onSelectKid={id => {
+              if (gridUnlocked) { setActiveKidId(id); setScreen("grid"); }
+              else { setPendingKidId(id); setPinPurpose("grid"); setPinUnlocked(false); setScreen("pin"); }
+            }} onOpenSettings={() => { setPinPurpose("settings"); setPinUnlocked(false); setScreen("pin"); }} />}
+      {screen === "grid" && activeKid && <GridScreen kid={activeKid} data={data} totalCells={totalCells} onBack={() => setScreen("home")} onAddFace={() => setFacePicker({ mode: "add" })} onChangeDefault={() => setFacePicker({ mode: "set-default" })} onCellTap={handleCellTap} onCellLongPress={handleCellLongPress} defaultFaceId={defaultFaceId} />}
+      {screen === "pin" && <PINScreen correctPin={data.settings.pin} credentialId={data.settings.biometricCredentialId} onSuccess={() => {
+        if (pinPurpose === "grid") {
+          setGridUnlocked(true);
+          setActiveKidId(pendingKidId);
+          setScreen("grid");
+        } else {
+          setPinUnlocked(true);
+          setScreen("settings");
+        }
+      }} onBack={() => setScreen("home")} purpose={pinPurpose} />}
       {screen === "settings" && pinUnlocked && <SettingsScreen data={data} updateData={update} onBack={() => setScreen("home")} />}
-      {facePicker && <FacePickerModal onSelect={applyFaceSelect} onClose={() => setFacePicker(null)} seasonalMode={data.settings.seasonalMode || "auto"} isBlocked={!!isActiveBlocked && facePicker.mode !== "set-default"} initialId={defaultFaceId} />}
-      {cellOptions && <CellOptionsModal faceId={cellOptions.type === "good" ? activeKid?.goodFaces[cellOptions.idx]?.faceId : activeKid?.badFaces[cellOptions.idx]?.faceId} type={cellOptions.type} onRemove={handleRemove} onChange={cellOptions.type === "good" ? () => { setFacePicker({ mode: "change", idx: cellOptions.idx }); setCellOptions(null); } : undefined} onClose={() => setCellOptions(null)} />}
+      {facePicker && <FacePickerModal onSelect={applyFaceSelect} onClose={() => (() => { modalClosedAt.current = Date.now(); setFacePicker(null); })} seasonalMode={data.settings.seasonalMode || "auto"} isBlocked={!!isActiveBlocked && facePicker.mode !== "set-default"} initialId={defaultFaceId} />}
+      {cellOptions && <CellOptionsModal faceId={cellOptions.type === "good" ? activeKid?.goodFaces[cellOptions.idx]?.faceId : activeKid?.badFaces[cellOptions.idx]?.faceId} type={cellOptions.type} onRemove={handleRemove} onChange={cellOptions.type === "good" ? () => { setFacePicker({ mode: "change", idx: cellOptions.idx }); setCellOptions(null); } : undefined} onClose={() => (() => { modalClosedAt.current = Date.now(); setCellOptions(null); })} />}
     </div>
   );
 }
